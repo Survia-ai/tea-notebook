@@ -86,6 +86,8 @@
   #authView .link{display:block;text-align:center;margin-top:14px;color:var(--muted);font-size:13px;background:none;border:none;width:100%;cursor:pointer;}
   #authMsg{font-size:14px;text-align:center;margin-top:14px;min-height:20px;}
   #authMsg.err{color:#c0392b;}#authMsg.ok{color:var(--green);}
+  #authView .hint{text-align:center;color:var(--muted);font-size:13px;background:#eef3ee;border-radius:8px;padding:8px 10px;margin-bottom:16px;}
+  .credit{text-align:center;color:var(--muted);font-size:12px;padding:18px 0 26px;letter-spacing:.5px;}
 </style>
 </head>
 <body>
@@ -94,12 +96,14 @@
 <div id="authView" style="display:none;">
   <div class="logo">茶葉感官審評紀錄本</div>
   <div class="tagline">登入或註冊以開始記錄你的品茶筆記</div>
+  <div class="hint">第一次使用請先點下方「註冊新帳號」建立帳號，再登入。</div>
   <div class="field"><input type="email" id="authEmail" placeholder="Email" autocomplete="username"></div>
   <div class="field"><input type="password" id="authPass" placeholder="密碼（至少 6 碼）" autocomplete="current-password"></div>
   <button class="pri" id="btnLogin" onclick="doLogin()">登 入</button>
   <button class="sec" id="btnSignup" onclick="doSignup()">註冊新帳號</button>
   <button class="link" onclick="doReset()">忘記密碼？寄送重設信</button>
   <div id="authMsg"></div>
+  <div class="credit">製作者 survia.lee</div>
 </div>
 
 <!-- ================= 主程式 ================= -->
@@ -181,6 +185,7 @@
     <label>結尾筆記</label>
     <textarea id="notes" placeholder="整體心得、建議或其他備註…"></textarea>
   </div>
+  <div class="credit">製作者 survia.lee</div>
 </div>
 
 <div class="wrap" id="view-records" style="display:none;">
@@ -205,6 +210,7 @@
   </div>
   <div class="count" id="count"></div>
   <div id="recList"></div>
+  <div class="credit">製作者 survia.lee</div>
 </div>
 
 <div class="footer" id="footer"><button class="submit" id="submitBtn" onclick="submitForm()">儲 存 紀 錄</button></div>
@@ -267,8 +273,8 @@ async function doSignup(){
   setMsg('註冊中…','');
   const {data,error}=await sb.auth.signUp({email,password:pass});
   if(error){ setMsg('註冊失敗：'+error.message,'err'); return; }
-  if(data.session) setMsg('註冊成功，登入中…','ok');
-  else setMsg('註冊成功！請到信箱收驗證信，點擊連結後再回來登入。','ok');
+  if(data.session) setMsg('註冊成功，正在自動登入…','ok');
+  else setMsg('註冊成功！請直接用剛剛的 Email 與密碼登入。','ok');
 }
 async function doReset(){
   const email=document.getElementById('authEmail').value.trim();
