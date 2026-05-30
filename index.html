@@ -26,6 +26,7 @@
   .sub{font-weight:600;color:var(--muted);font-size:13px;margin:12px 0 6px;}
   .grouplabel{font-size:12px;color:var(--muted);margin:8px 0 5px;font-weight:600;}
   .grouplabel.tw{color:var(--tw);}
+  .grouplabel.toggle{cursor:pointer;user-select:none;color:var(--green);background:#eef3ee;display:inline-block;padding:4px 10px;border-radius:8px;}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;}
   .chip{display:inline-flex;align-items:center;padding:7px 6px 7px 12px;background:var(--chip);border:1px solid var(--line);border-radius:20px;font-size:14px;cursor:pointer;user-select:none;transition:.12s;}
   .chip.selected{background:var(--green);color:#fff;border-color:var(--green);}
@@ -128,6 +129,12 @@
     </div>
     <label style="margin-top:12px;">茶樣品名</label>
     <input type="text" id="sample" placeholder="例：阿里山高山烏龍">
+    <div class="date-row" style="margin-top:12px;">
+      <div><label>品種</label><input type="text" id="variety" placeholder="選填，例：青心烏龍"></div>
+      <div><label>年份</label><input type="text" id="year" placeholder="選填，例：2024春"></div>
+    </div>
+    <label style="margin-top:12px;">廠家／茶廠</label>
+    <input type="text" id="maker" placeholder="選填">
   </div>
 
   <div class="card">
@@ -345,13 +352,11 @@ function buildField(field){
   const tTerms=(TERMS.taiwan[c]&&TERMS.taiwan[c][field.key])||[];
   const gTerms=TERMS.common[field.key]||[];
   const groups=[];
-  if(cTerms.length) groups.push({label:CAT_LABEL[c]+'專用術語',cls:'',items:cTerms});
-  if(tTerms.length) groups.push({label:'台灣常用術語',cls:'tw',items:tTerms});
-  if(gTerms.length) groups.push({label:'通用術語',cls:'',items:gTerms});
+  if(cTerms.length) groups.push({label:CAT_LABEL[c]+'專用術語',cls:'',items:cTerms,collapse:false});
+  if(tTerms.length) groups.push({label:'台灣常用術語',cls:'tw',items:tTerms,collapse:false});
+  if(gTerms.length) groups.push({label:'通用術語',cls:'',items:gTerms,collapse:true});
   const box=document.getElementById('chips-'+field.id); box.innerHTML=''; const seen=new Set();
-  groups.forEach(g=>{
-    const lab=document.createElement('div'); lab.className='grouplabel'+(g.cls?' '+g.cls:''); lab.textContent=g.label; box.appendChild(lab);
-    const row=document.createElement('div'); row.className='chips';
+  function fillRow(row,g){
     g.items.forEach(obj=>{
       if(seen.has(obj.t)) return; seen.add(obj.t); defMap[obj.t]=obj;
       const chip=document.createElement('span'); chip.className='chip'+(g.cls?' '+g.cls:''); chip.dataset.term=obj.t;
@@ -359,7 +364,21 @@ function buildField(field){
       chip.onclick=e=>{ if(e.target.classList.contains('info')){openDef(field.id,obj.t);return;} toggleSelect(field.id,obj.t,chip); };
       row.appendChild(chip);
     });
-    box.appendChild(row);
+  }
+  groups.forEach(g=>{
+    if(g.collapse){
+      const tg=document.createElement('div'); tg.className='grouplabel toggle';
+      const row=document.createElement('div'); row.className='chips'; row.style.display='none';
+      const setTxt=open=>{ tg.textContent=(open?'－ ':'＋ ')+g.label+'（'+g.items.length+(open?' 條，點擊收合）':' 條，點擊展開）'); };
+      setTxt(false);
+      tg.onclick=()=>{ const open=row.style.display==='none'; row.style.display=open?'flex':'none'; setTxt(open); };
+      fillRow(row,g);
+      box.appendChild(tg); box.appendChild(row);
+    }else{
+      const lab=document.createElement('div'); lab.className='grouplabel'+(g.cls?' '+g.cls:''); lab.textContent=g.label; box.appendChild(lab);
+      const row=document.createElement('div'); row.className='chips';
+      fillRow(row,g); box.appendChild(row);
+    }
   });
 }
 function toggleSelect(fieldId,term,chip){
@@ -434,6 +453,9 @@ async function submitForm(){
       user_id:currentUser.id, record_date:document.getElementById('date').value||todayStr(),
       category:CAT_LABEL[cat()]+(cat()==='oolong'?'（烏龍茶）':''),
       recorder:document.getElementById('recorder').value.trim(), sample:sample,
+      variety:document.getElementById('variety').value.trim(),
+      maker:document.getElementById('maker').value.trim(),
+      tea_year:document.getElementById('year').value.trim(),
       shape:collect('shape'), dry_color:collect('dryColor'),
       shake_aroma:collect('shakeAroma'), soup_aroma:collect('soupAroma'),
       soup_color:collect('soupColor'), taste:collect('taste'), leaf:collect('leaf'),
@@ -447,7 +469,7 @@ async function submitForm(){
   btn.disabled=false; btn.textContent='儲 存 紀 錄';
 }
 function resetForm(){
-  ['sample','notes','free-shape','free-dryColor','free-shakeAroma','free-soupAroma','free-soupColor','free-taste','free-leaf']
+  ['sample','variety','maker','year','notes','free-shape','free-dryColor','free-shakeAroma','free-soupAroma','free-soupColor','free-taste','free-leaf']
     .forEach(id=>{const el=document.getElementById(id); if(el)el.value='';});
   document.getElementById('recorder').value = getNick();
   for(const k in selected) selected[k].clear();
@@ -465,6 +487,7 @@ async function loadRecords(force){
   if(error){ document.getElementById('recList').innerHTML='<div class="empty">載入失敗：'+error.message+'</div>'; return; }
   allRecords=(data||[]).map(r=>({
     id:r.id, date:r.record_date||'', category:r.category||'', recorder:r.recorder||'', sample:r.sample||'',
+    variety:r.variety||'', maker:r.maker||'', year:r.tea_year||'',
     shape:r.shape||'', dryColor:r.dry_color||'', shakeAroma:r.shake_aroma||'', soupAroma:r.soup_aroma||'',
     soupColor:r.soup_color||'', taste:r.taste||'', leaf:r.leaf||'', notes:r.notes||'',
     photoDry:r.photo_dry||'', photoSoup:r.photo_soup||'', photoLeaf:r.photo_leaf||''
@@ -483,7 +506,7 @@ function applyFilters(){
     if(c && r.category!==c) return false;
     if(from && r.date<from) return false;
     if(to && r.date>to) return false;
-    if(kw){ const hay=[r.sample,r.recorder,r.category,r.date,r.shape,r.dryColor,r.shakeAroma,r.soupAroma,r.soupColor,r.taste,r.leaf,r.notes].join(' ').toLowerCase(); if(hay.indexOf(kw)===-1) return false; }
+    if(kw){ const hay=[r.sample,r.recorder,r.category,r.date,r.variety,r.maker,r.year,r.shape,r.dryColor,r.shakeAroma,r.soupAroma,r.soupColor,r.taste,r.leaf,r.notes].join(' ').toLowerCase(); if(hay.indexOf(kw)===-1) return false; }
     return true;
   });
   renderRecords();
@@ -496,11 +519,13 @@ function renderRecords(){
   list.innerHTML=filtered.map(r=>{
     let lines='';
     ['shape','dryColor','shakeAroma','soupAroma','soupColor','taste','leaf'].forEach(k=>{ if(r[k]) lines+='<div class="ln"><b>'+DIM_LABEL[k]+'</b>'+escapeHtml(r[k])+'</div>'; });
+    const meta2=[r.variety&&('品種：'+r.variety), r.year&&('年份：'+r.year), r.maker&&('茶廠：'+r.maker)].filter(Boolean).map(escapeHtml).join('　·　');
     let thumbs='';
     [['photoDry','茶乾'],['photoSoup','湯色'],['photoLeaf','葉底']].forEach(p=>{ if(r[p[0]]) thumbs+='<div class="t"><div class="cap">'+p[1]+'</div><img src="'+r[p[0]]+'" onclick="openLB(\''+r[p[0]]+'\')"></div>'; });
     return '<div class="rec"><div class="rhead"><span class="rt">'+escapeHtml(r.sample||'未命名')+'</span>'
       +'<button class="del" onclick="delRecord(\''+r.id+'\')">刪除</button></div>'
       +'<div class="rm">'+escapeHtml(r.date)+'　·　'+escapeHtml(r.category)+(r.recorder?'　·　'+escapeHtml(r.recorder):'')+'</div>'
+      +(meta2?'<div class="rm" style="margin-top:-6px">'+meta2+'</div>':'')
       +lines+(r.notes?'<div class="nt">📝 '+escapeHtml(r.notes)+'</div>':'')+(thumbs?'<div class="thumbs">'+thumbs+'</div>':'')+'</div>';
   }).join('');
 }
@@ -535,6 +560,9 @@ function exportPdf(){
   let body='';
   filtered.forEach(r=>{
     let rows='';
+    if(r.variety) rows+='<tr><th>品種</th><td>'+escapeHtml(r.variety)+'</td></tr>';
+    if(r.year) rows+='<tr><th>年份</th><td>'+escapeHtml(r.year)+'</td></tr>';
+    if(r.maker) rows+='<tr><th>茶廠</th><td>'+escapeHtml(r.maker)+'</td></tr>';
     DIM.forEach(d=>{ if(r[d[0]]) rows+='<tr><th>'+d[1]+'</th><td>'+escapeHtml(r[d[0]])+'</td></tr>'; });
     if(r.notes) rows+='<tr><th>結尾筆記</th><td>'+escapeHtml(r.notes)+'</td></tr>';
     let cells='';
