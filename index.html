@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>茶葉感官審評紀錄本</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="terms.js"></script>
+<style>
+  :root{--bg:#f4f1ea;--card:#fff;--green:#3f6b46;--green-dark:#2c4d31;--line:#e1ddd2;--text:#2b2b2b;--muted:#8a8576;--chip:#eef1ec;--tw:#9a6a2f;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;font-size:16px;line-height:1.5;}
+  header{background:var(--green);color:#fff;padding:14px 16px 0;position:sticky;top:0;z-index:5;}
+  .htop{display:flex;align-items:center;justify-content:space-between;}
+  header h1{margin:0;font-size:17px;letter-spacing:1px;}
+  .who{font-size:12px;color:rgba(255,255,255,.85);}
+  .who button{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;margin-left:8px;cursor:pointer;}
+  .tabs{display:flex;margin-top:10px;}
+  .tab{flex:1;text-align:center;padding:11px 0;cursor:pointer;font-size:15px;font-weight:600;color:rgba(255,255,255,.7);border-bottom:3px solid transparent;}
+  .tab.active{color:#fff;border-bottom-color:#fff;}
+  .wrap{max-width:640px;margin:0 auto;padding:14px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;}
+  label{display:block;font-weight:700;margin-bottom:8px;font-size:15px;color:var(--green-dark);}
+  input[type=text],input[type=email],input[type=password],input[type=date],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:16px;background:#fff;color:var(--text);font-family:inherit;}
+  textarea{resize:vertical;min-height:90px;}
+  .sub{font-weight:600;color:var(--muted);font-size:13px;margin:12px 0 6px;}
+  .grouplabel{font-size:12px;color:var(--muted);margin:8px 0 5px;font-weight:600;}
+  .grouplabel.tw{color:var(--tw);}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;}
+  .chip{display:inline-flex;align-items:center;padding:7px 6px 7px 12px;background:var(--chip);border:1px solid var(--line);border-radius:20px;font-size:14px;cursor:pointer;user-select:none;transition:.12s;}
+  .chip.selected{background:var(--green);color:#fff;border-color:var(--green);}
+  .chip.tw{background:#f6efe4;border-color:#e6d6bd;}
+  .chip.tw.selected{background:var(--tw);border-color:var(--tw);color:#fff;}
+  .chip .info{margin-left:5px;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;font-size:12px;background:rgba(0,0,0,.08);flex:0 0 auto;}
+  .chip.selected .info{background:rgba(255,255,255,.28);}
+  .free{margin-top:8px;}
+  .photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:1.5px dashed var(--green);border-radius:12px;background:#fbfbf8;color:var(--green-dark);font-weight:600;cursor:pointer;}
+  .photo-btn input{display:none;}
+  .preview{margin-top:10px;position:relative;display:none;}
+  .preview img{width:100%;border-radius:12px;display:block;}
+  .preview .rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;}
+  .footer{position:fixed;left:0;right:0;bottom:0;padding:12px 14px;background:rgba(244,241,234,.95);border-top:1px solid var(--line);backdrop-filter:blur(6px);}
+  .submit{max-width:640px;margin:0 auto;display:block;width:100%;padding:15px;background:var(--green);color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;letter-spacing:2px;cursor:pointer;}
+  .submit:disabled{opacity:.6;}
+  .date-row{display:flex;gap:10px;}.date-row>div{flex:1;}
+  .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--green-dark);color:#fff;padding:12px 20px;border-radius:30px;font-size:15px;opacity:0;transition:.3s;z-index:60;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:40;}
+  .overlay.show{display:flex;}
+  .sheet{background:#fff;width:100%;max-width:640px;margin:0 auto;border-radius:18px 18px 0 0;padding:20px 18px 24px;}
+  .sheet h3{margin:0 0 2px;font-size:20px;color:var(--green-dark);}
+  .sheet .en{color:var(--muted);font-size:13px;margin-bottom:12px;font-style:italic;}
+  .sheet .def{font-size:15px;line-height:1.7;margin-bottom:18px;}
+  .sheet .btn{display:block;width:100%;padding:13px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;text-align:center;}
+  .sheet .btn.add{background:var(--green);color:#fff;}.sheet .btn.rm{background:#e7e3d8;color:var(--green-dark);}
+  .sheet .close{display:block;width:100%;text-align:center;margin-top:10px;color:var(--muted);background:none;border:none;font-size:14px;padding:6px;}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50;padding:16px;}
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:100%;max-height:88%;border-radius:8px;}
+  .lightbox .x{position:absolute;top:14px;right:18px;color:#fff;font-size:30px;background:none;border:none;}
+  .filters .frow{display:flex;gap:8px;margin-bottom:10px;}.filters .frow>div{flex:1;}
+  .filters small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px;}
+  .barbtn{display:flex;gap:8px;margin-top:4px;}
+  .barbtn button{flex:1;padding:11px;border-radius:10px;border:1px solid var(--green);background:#fff;color:var(--green-dark);font-weight:700;font-size:14px;cursor:pointer;}
+  .barbtn button.pdf{background:var(--green);color:#fff;border-color:var(--green);}
+  .count{color:var(--muted);font-size:13px;margin:4px 2px 12px;}
+  .rec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .rec .rhead{display:flex;justify-content:space-between;align-items:flex-start;}
+  .rec .rt{font-size:17px;font-weight:700;color:var(--green-dark);}
+  .rec .del{background:none;border:none;color:#b25;font-size:13px;cursor:pointer;padding:2px 4px;}
+  .rec .rm{color:var(--muted);font-size:12px;margin:2px 0 10px;}
+  .rec .ln{font-size:14px;margin:3px 0;}.rec .ln b{color:var(--green);font-weight:600;margin-right:4px;}
+  .rec .nt{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:14px;color:#444;}
+  .rec .thumbs{display:flex;gap:8px;margin-top:10px;}
+  .rec .thumbs .t{flex:1;}.rec .thumbs .cap{font-size:11px;color:var(--muted);margin-bottom:3px;}
+  .rec .thumbs img{width:100%;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:#eee;}
+  .empty{text-align:center;color:var(--muted);padding:40px 0;}
+  /* 登入畫面 */
+  #authView{max-width:420px;margin:0 auto;padding:36px 18px;}
+  #authView .logo{text-align:center;font-size:22px;color:var(--green-dark);font-weight:800;letter-spacing:2px;margin-bottom:6px;}
+  #authView .tagline{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px;}
+  #authView .field{margin-bottom:12px;}
+  #authView .pri{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px;}
+  #authView .sec{width:100%;padding:12px;background:#fff;color:var(--green-dark);border:1px solid var(--green);border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
+  #authView .link{display:block;text-align:center;margin-top:14px;color:var(--muted);font-size:13px;background:none;border:none;width:100%;cursor:pointer;}
+  #authMsg{font-size:14px;text-align:center;margin-top:14px;min-height:20px;}
+  #authMsg.err{color:#c0392b;}#authMsg.ok{color:var(--green);}
+</style>
+</head>
+<body>
+
+<!-- ================= 登入 / 註冊 ================= -->
+<div id="authView" style="display:none;">
+  <div class="logo">茶葉感官審評紀錄本</div>
+  <div class="tagline">登入或註冊以開始記錄你的品茶筆記</div>
+  <div class="field"><input type="email" id="authEmail" placeholder="Email" autocomplete="username"></div>
+  <div class="field"><input type="password" id="authPass" placeholder="密碼（至少 6 碼）" autocomplete="current-password"></div>
+  <button class="pri" id="btnLogin" onclick="doLogin()">登 入</button>
+  <button class="sec" id="btnSignup" onclick="doSignup()">註冊新帳號</button>
+  <button class="link" onclick="doReset()">忘記密碼？寄送重設信</button>
+  <div id="authMsg"></div>
+</div>
+
+<!-- ================= 主程式 ================= -->
+<div id="appView" style="display:none;">
+<header>
+  <div class="htop">
+    <h1>茶葉感官審評表</h1>
+    <div class="who"><span id="whoEmail"></span><button onclick="doLogout()">登出</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-form" onclick="switchTab('form')">新增紀錄</div>
+    <div class="tab" id="tab-records" onclick="switchTab('records')">我的紀錄本</div>
+  </div>
+</header>
+
+<div class="wrap" id="view-form">
+  <div class="card">
+    <label>茶類</label>
+    <select id="category" onchange="onCategoryChange()">
+      <option value="green">綠茶</option><option value="white">白茶</option>
+      <option value="yellow">黃茶</option><option value="oolong" selected>青茶（烏龍茶）</option>
+      <option value="black">紅茶</option><option value="dark">黑茶</option>
+    </select>
+    <div class="date-row" style="margin-top:12px;">
+      <div><label>紀錄人</label><input type="text" id="recorder" placeholder="姓名"></div>
+      <div><label>紀錄日</label><input type="text" id="date" readonly></div>
+    </div>
+    <label style="margin-top:12px;">茶樣品名</label>
+    <input type="text" id="sample" placeholder="例：阿里山高山烏龍">
+  </div>
+
+  <div class="card">
+    <label>乾茶外觀</label>
+    <div class="sub">茶乾形狀</div><div class="chips" id="chips-shape"></div>
+    <input class="free" type="text" id="free-shape" placeholder="其他自行填寫…">
+    <div class="sub">茶乾色澤</div><div class="chips" id="chips-dryColor"></div>
+    <input class="free" type="text" id="free-dryColor" placeholder="其他自行填寫…">
+    <div class="sub">茶乾照片</div>
+    <label class="photo-btn">📷 拍照／選擇照片<input type="file" accept="image/*" onchange="handlePhoto(this,'photoDry')"></label>
+    <div class="preview" id="prev-photoDry"><img><button class="rm" onclick="removePhoto('photoDry')">×</button></div>
+  </div>
+
+  <div class="card">
+    <label>香氣</label>
+    <div class="sub">搖香香氣</div><div class="chips" id="chips-shakeAroma"></div>
+    <input class="free" type="text" id="free-shakeAroma" placeholder="其他自行填寫…">
+    <div class="sub">茶湯香氣</div><div class="chips" id="chips-soupAroma"></div>
+    <input class="free" type="text" id="free-soupAroma" placeholder="其他自行填寫…">
+  </div>
+
+  <div class="card">
+    <label>茶湯湯色</label><div class="chips" id="chips-soupColor"></div>
+    <input class="free" type="text" id="free-soupColor" placeholder="其他自行填寫…">
+    <div class="sub">湯色照片</div>
+    <label class="photo-btn">📷 拍照／選擇照片<input type="file" accept="image/*" onchange="handlePhoto(this,'photoSoup')"></label>
+    <div class="preview" id="prev-photoSoup"><img><button class="rm" onclick="removePhoto('photoSoup')">×</button></div>
+  </div>
+
+  <div class="card">
+    <label>茶湯滋味</label><div class="chips" id="chips-taste"></div>
+    <input class="free" type="text" id="free-taste" placeholder="其他自行填寫…">
+  </div>
+
+  <div class="card">
+    <label>茶葉葉底（色澤／形狀／整碎）</label><div class="chips" id="chips-leaf"></div>
+    <input class="free" type="text" id="free-leaf" placeholder="其他自行填寫…">
+    <div class="sub">葉底照片</div>
+    <label class="photo-btn">📷 拍照／選擇照片<input type="file" accept="image/*" onchange="handlePhoto(this,'photoLeaf')"></label>
+    <div class="preview" id="prev-photoLeaf"><img><button class="rm" onclick="removePhoto('photoLeaf')">×</button></div>
+  </div>
+
+  <div class="card">
+    <label>結尾筆記</label>
+    <textarea id="notes" placeholder="整體心得、建議或其他備註…"></textarea>
+  </div>
+</div>
+
+<div class="wrap" id="view-records" style="display:none;">
+  <div class="card filters">
+    <div class="frow"><div><small>茶類</small>
+      <select id="fCat" onchange="applyFilters()">
+        <option value="">全部茶類</option><option value="綠茶">綠茶</option><option value="白茶">白茶</option>
+        <option value="黃茶">黃茶</option><option value="青茶（烏龍茶）">青茶（烏龍茶）</option>
+        <option value="紅茶">紅茶</option><option value="黑茶">黑茶</option>
+      </select></div></div>
+    <div class="frow">
+      <div><small>起始日</small><input type="date" id="fFrom" onchange="applyFilters()"></div>
+      <div><small>結束日</small><input type="date" id="fTo" onchange="applyFilters()"></div>
+    </div>
+    <div class="frow"><div><small>關鍵字（品名、術語、筆記…）</small>
+      <input type="text" id="fKw" placeholder="輸入關鍵字" oninput="applyFilters()"></div></div>
+    <div class="barbtn">
+      <button onclick="clearFilters()">清除篩選</button>
+      <button onclick="loadRecords(true)">重新整理</button>
+      <button class="pdf" onclick="exportPdf()">匯出 PDF</button>
+    </div>
+  </div>
+  <div class="count" id="count"></div>
+  <div id="recList"></div>
+</div>
+
+<div class="footer" id="footer"><button class="submit" id="submitBtn" onclick="submitForm()">儲 存 紀 錄</button></div>
+</div><!-- /appView -->
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeDef()">
+  <div class="sheet">
+    <h3 id="defTerm"></h3><div class="en" id="defEn"></div><div class="def" id="defText"></div>
+    <button class="btn add" id="defBtn" onclick="toggleFromSheet()"></button>
+    <button class="close" onclick="closeDef()">關閉</button>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLB()">
+  <button class="x" onclick="closeLB()">×</button><img id="lbImg">
+</div>
+
+<script>
+/* ===== 設定（公開金鑰，可放前端）===== */
+const SUPABASE_URL = 'https://qwpjmdkikzgfcbnnuacl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wQaURimfpcSMpzOs6pQDqA_9WmPqaEI';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const CAT_LABEL = {green:'綠茶',white:'白茶',yellow:'黃茶',oolong:'青茶',black:'紅茶',dark:'黑茶'};
+const DIM_LABEL = {shape:'茶乾形狀',dryColor:'茶乾色澤',shakeAroma:'搖香香氣',soupAroma:'茶湯香氣',soupColor:'茶湯湯色',taste:'茶湯滋味',leaf:'葉底'};
+const FIELDS = [
+  {id:'shape',key:'shape'},{id:'dryColor',key:'dryColor'},
+  {id:'shakeAroma',key:'aroma'},{id:'soupAroma',key:'aroma'},
+  {id:'soupColor',key:'soupColor'},{id:'taste',key:'taste'},{id:'leaf',key:'leaf'}
+];
+const photos = {photoDry:'',photoSoup:'',photoLeaf:''};
+const selected = {};
+const defMap = {};
+let sheetCtx = null, allRecords = null, filtered = [], currentUser = null;
+
+/* ===== 認證 ===== */
+function setMsg(t, cls){ const m=document.getElementById('authMsg'); m.textContent=t||''; m.className=cls||''; }
+async function doLogin(){
+  const email=document.getElementById('authEmail').value.trim(), pass=document.getElementById('authPass').value;
+  if(!email||!pass){ setMsg('請輸入 Email 與密碼','err'); return; }
+  setMsg('登入中…','');
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error) setMsg('登入失敗：'+error.message,'err');
+}
+async function doSignup(){
+  const email=document.getElementById('authEmail').value.trim(), pass=document.getElementById('authPass').value;
+  if(!email||pass.length<6){ setMsg('請輸入 Email，密碼至少 6 碼','err'); return; }
+  setMsg('註冊中…','');
+  const {data,error}=await sb.auth.signUp({email,password:pass});
+  if(error){ setMsg('註冊失敗：'+error.message,'err'); return; }
+  if(data.session) setMsg('註冊成功，登入中…','ok');
+  else setMsg('註冊成功！請到信箱收驗證信，點擊連結後再回來登入。','ok');
+}
+async function doReset(){
+  const email=document.getElementById('authEmail').value.trim();
+  if(!email){ setMsg('請先在上方填入要重設的 Email','err'); return; }
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  setMsg(error?('寄送失敗：'+error.message):'重設信已寄出，請至信箱查看。', error?'err':'ok');
+}
+async function doLogout(){ await sb.auth.signOut(); }
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if(event==='PASSWORD_RECOVERY'){
+    const np=prompt('請輸入新密碼（至少 6 碼）');
+    if(np){ const {error}=await sb.auth.updateUser({password:np}); toast(error?('更新失敗：'+error.message):'密碼已更新'); }
+  }
+  applySession(session);
+});
+
+function applySession(session){
+  currentUser = session ? session.user : null;
+  document.getElementById('authView').style.display = currentUser ? 'none' : '';
+  document.getElementById('appView').style.display  = currentUser ? '' : 'none';
+  if(currentUser){
+    document.getElementById('whoEmail').textContent = currentUser.email;
+    if(!document.getElementById('date').value) document.getElementById('date').value = todayStr();
+    allRecords = null;   // 換人或剛登入 → 重載
+  }
+}
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ===== 分頁 ===== */
+function switchTab(which){
+  const isForm = which==='form';
+  document.getElementById('view-form').style.display = isForm?'':'none';
+  document.getElementById('view-records').style.display = isForm?'none':'';
+  document.getElementById('footer').style.display = isForm?'':'none';
+  document.getElementById('tab-form').classList.toggle('active', isForm);
+  document.getElementById('tab-records').classList.toggle('active', !isForm);
+  document.body.style.paddingBottom = isForm?'90px':'20px';
+  if(!isForm && allRecords===null) loadRecords();
+  window.scrollTo(0,0);
+}
+
+/* ===== 表單術語 ===== */
+function cat(){ return document.getElementById('category').value; }
+function buildField(field){
+  const c=cat();
+  const cTerms=(TERMS.category[c]&&TERMS.category[c][field.key])||[];
+  const tTerms=(TERMS.taiwan[c]&&TERMS.taiwan[c][field.key])||[];
+  const gTerms=TERMS.common[field.key]||[];
+  const groups=[];
+  if(cTerms.length) groups.push({label:CAT_LABEL[c]+'專用術語',cls:'',items:cTerms});
+  if(tTerms.length) groups.push({label:'台灣常用術語',cls:'tw',items:tTerms});
+  if(gTerms.length) groups.push({label:'通用術語',cls:'',items:gTerms});
+  const box=document.getElementById('chips-'+field.id); box.innerHTML=''; const seen=new Set();
+  groups.forEach(g=>{
+    const lab=document.createElement('div'); lab.className='grouplabel'+(g.cls?' '+g.cls:''); lab.textContent=g.label; box.appendChild(lab);
+    const row=document.createElement('div'); row.className='chips';
+    g.items.forEach(obj=>{
+      if(seen.has(obj.t)) return; seen.add(obj.t); defMap[obj.t]=obj;
+      const chip=document.createElement('span'); chip.className='chip'+(g.cls?' '+g.cls:''); chip.dataset.term=obj.t;
+      chip.innerHTML='<span>'+obj.t+'</span><span class="info">i</span>';
+      chip.onclick=e=>{ if(e.target.classList.contains('info')){openDef(field.id,obj.t);return;} toggleSelect(field.id,obj.t,chip); };
+      row.appendChild(chip);
+    });
+    box.appendChild(row);
+  });
+}
+function toggleSelect(fieldId,term,chip){
+  if(!selected[fieldId]) selected[fieldId]=new Set();
+  if(selected[fieldId].has(term)){ selected[fieldId].delete(term); if(chip)chip.classList.remove('selected'); }
+  else{ selected[fieldId].add(term); if(chip)chip.classList.add('selected'); }
+}
+function openDef(fieldId,term){
+  sheetCtx={fieldId,term}; const o=defMap[term]||{t:term,e:'',d:''};
+  document.getElementById('defTerm').textContent=o.t;
+  document.getElementById('defEn').textContent=o.e||'';
+  document.getElementById('defText').textContent=o.d||'（無說明）';
+  updateSheetBtn(); document.getElementById('overlay').classList.add('show');
+}
+function updateSheetBtn(){
+  const sel=selected[sheetCtx.fieldId]&&selected[sheetCtx.fieldId].has(sheetCtx.term);
+  const btn=document.getElementById('defBtn');
+  btn.textContent=sel?'✓ 已選用（點擊移除）':'＋ 選用此術語'; btn.className='btn '+(sel?'rm':'add');
+}
+function toggleFromSheet(){
+  const chip=document.querySelector('#chips-'+sheetCtx.fieldId+' .chip[data-term="'+sheetCtx.term+'"]');
+  toggleSelect(sheetCtx.fieldId,sheetCtx.term,chip); updateSheetBtn();
+}
+function closeDef(){ document.getElementById('overlay').classList.remove('show'); }
+function onCategoryChange(){ for(const k in selected) selected[k].clear(); FIELDS.forEach(buildField); }
+function collect(fieldId){
+  const sel=selected[fieldId]?[...selected[fieldId]]:[];
+  const free=(document.getElementById('free-'+fieldId).value||'').trim();
+  if(free) sel.push(free); return sel.join('、');
+}
+
+/* ===== 照片 ===== */
+function handlePhoto(input,key){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1280; let w=img.width,h=img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      photos[key]=cv.toDataURL('image/jpeg',0.8);
+      const prev=document.getElementById('prev-'+key); prev.querySelector('img').src=photos[key]; prev.style.display='block';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removePhoto(key){ photos[key]=''; document.getElementById('prev-'+key).style.display='none'; }
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+/* ===== 儲存 ===== */
+async function uploadPhoto(dataUrl,label){
+  if(!dataUrl) return '';
+  const blob=await (await fetch(dataUrl)).blob();
+  const path=currentUser.id+'/'+Date.now()+'_'+label+'.jpg';
+  const {error}=await sb.storage.from('photos').upload(path,blob,{contentType:'image/jpeg'});
+  if(error) throw error;
+  return sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+}
+async function submitForm(){
+  const sample=document.getElementById('sample').value.trim();
+  if(!sample){ toast('請填寫茶樣品名'); return; }
+  const btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='儲存中…';
+  try{
+    const pDry=await uploadPhoto(photos.photoDry,'dry');
+    const pSoup=await uploadPhoto(photos.photoSoup,'soup');
+    const pLeaf=await uploadPhoto(photos.photoLeaf,'leaf');
+    const row={
+      user_id:currentUser.id, record_date:document.getElementById('date').value||todayStr(),
+      category:CAT_LABEL[cat()]+(cat()==='oolong'?'（烏龍茶）':''),
+      recorder:document.getElementById('recorder').value.trim(), sample:sample,
+      shape:collect('shape'), dry_color:collect('dryColor'),
+      shake_aroma:collect('shakeAroma'), soup_aroma:collect('soupAroma'),
+      soup_color:collect('soupColor'), taste:collect('taste'), leaf:collect('leaf'),
+      notes:document.getElementById('notes').value.trim(),
+      photo_dry:pDry, photo_soup:pSoup, photo_leaf:pLeaf
+    };
+    const {error}=await sb.from('tea_records').insert(row);
+    if(error) throw error;
+    toast('✓ 已儲存成功！'); resetForm(); allRecords=null;
+  }catch(err){ toast('儲存失敗：'+err.message); }
+  btn.disabled=false; btn.textContent='儲 存 紀 錄';
+}
+function resetForm(){
+  ['sample','recorder','notes','free-shape','free-dryColor','free-shakeAroma','free-soupAroma','free-soupColor','free-taste','free-leaf']
+    .forEach(id=>{const el=document.getElementById(id); if(el)el.value='';});
+  for(const k in selected) selected[k].clear();
+  document.querySelectorAll('.chip.selected').forEach(c=>c.classList.remove('selected'));
+  ['photoDry','photoSoup','photoLeaf'].forEach(removePhoto);
+  window.scrollTo(0,0);
+}
+
+/* ===== 紀錄本 ===== */
+async function loadRecords(force){
+  if(force) allRecords=null;
+  document.getElementById('recList').innerHTML='<div class="empty">載入中…</div>';
+  document.getElementById('count').textContent='';
+  const {data,error}=await sb.from('tea_records').select('*').order('created_at',{ascending:false});
+  if(error){ document.getElementById('recList').innerHTML='<div class="empty">載入失敗：'+error.message+'</div>'; return; }
+  allRecords=(data||[]).map(r=>({
+    id:r.id, date:r.record_date||'', category:r.category||'', recorder:r.recorder||'', sample:r.sample||'',
+    shape:r.shape||'', dryColor:r.dry_color||'', shakeAroma:r.shake_aroma||'', soupAroma:r.soup_aroma||'',
+    soupColor:r.soup_color||'', taste:r.taste||'', leaf:r.leaf||'', notes:r.notes||'',
+    photoDry:r.photo_dry||'', photoSoup:r.photo_soup||'', photoLeaf:r.photo_leaf||''
+  }));
+  applyFilters();
+}
+function clearFilters(){
+  document.getElementById('fCat').value=''; document.getElementById('fFrom').value='';
+  document.getElementById('fTo').value=''; document.getElementById('fKw').value=''; applyFilters();
+}
+function applyFilters(){
+  if(!allRecords) return;
+  const c=document.getElementById('fCat').value, from=document.getElementById('fFrom').value, to=document.getElementById('fTo').value;
+  const kw=document.getElementById('fKw').value.trim().toLowerCase();
+  filtered=allRecords.filter(r=>{
+    if(c && r.category!==c) return false;
+    if(from && r.date<from) return false;
+    if(to && r.date>to) return false;
+    if(kw){ const hay=[r.sample,r.recorder,r.category,r.date,r.shape,r.dryColor,r.shakeAroma,r.soupAroma,r.soupColor,r.taste,r.leaf,r.notes].join(' ').toLowerCase(); if(hay.indexOf(kw)===-1) return false; }
+    return true;
+  });
+  renderRecords();
+}
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderRecords(){
+  const list=document.getElementById('recList');
+  document.getElementById('count').textContent='共 '+filtered.length+' 筆';
+  if(!filtered.length){ list.innerHTML='<div class="empty">沒有符合條件的紀錄</div>'; return; }
+  list.innerHTML=filtered.map(r=>{
+    let lines='';
+    ['shape','dryColor','shakeAroma','soupAroma','soupColor','taste','leaf'].forEach(k=>{ if(r[k]) lines+='<div class="ln"><b>'+DIM_LABEL[k]+'</b>'+escapeHtml(r[k])+'</div>'; });
+    let thumbs='';
+    [['photoDry','茶乾'],['photoSoup','湯色'],['photoLeaf','葉底']].forEach(p=>{ if(r[p[0]]) thumbs+='<div class="t"><div class="cap">'+p[1]+'</div><img src="'+r[p[0]]+'" onclick="openLB(\''+r[p[0]]+'\')"></div>'; });
+    return '<div class="rec"><div class="rhead"><span class="rt">'+escapeHtml(r.sample||'未命名')+'</span>'
+      +'<button class="del" onclick="delRecord(\''+r.id+'\')">刪除</button></div>'
+      +'<div class="rm">'+escapeHtml(r.date)+'　·　'+escapeHtml(r.category)+(r.recorder?'　·　'+escapeHtml(r.recorder):'')+'</div>'
+      +lines+(r.notes?'<div class="nt">📝 '+escapeHtml(r.notes)+'</div>':'')+(thumbs?'<div class="thumbs">'+thumbs+'</div>':'')+'</div>';
+  }).join('');
+}
+async function delRecord(id){
+  if(!confirm('確定要刪除這筆紀錄嗎？此動作無法復原。')) return;
+  const rec=allRecords.find(r=>r.id===id);
+  // 嘗試刪掉照片
+  if(rec){
+    const paths=['photoDry','photoSoup','photoLeaf'].map(k=>rec[k]).filter(Boolean)
+      .map(u=>{ const i=u.indexOf('/photos/'); return i>=0?u.slice(i+8):''; }).filter(Boolean);
+    if(paths.length){ try{ await sb.storage.from('photos').remove(paths); }catch(e){} }
+  }
+  const {error}=await sb.from('tea_records').delete().eq('id',id);
+  if(error){ toast('刪除失敗：'+error.message); return; }
+  allRecords=allRecords.filter(r=>r.id!==id); applyFilters(); toast('已刪除');
+}
+
+/* ===== 照片放大 ===== */
+function openLB(url){ document.getElementById('lbImg').src=url; document.getElementById('lightbox').classList.add('show'); }
+function closeLB(){ document.getElementById('lightbox').classList.remove('show'); }
+
+/* ===== 匯出 PDF（開新頁列印 → 存成 PDF）===== */
+function exportPdf(){
+  if(!filtered.length){ toast('沒有可匯出的紀錄'); return; }
+  const parts=[];
+  const c=document.getElementById('fCat').value; if(c) parts.push('茶類：'+c);
+  const from=document.getElementById('fFrom').value, to=document.getElementById('fTo').value;
+  if(from||to) parts.push('日期：'+(from||'…')+' ~ '+(to||'…'));
+  const kw=document.getElementById('fKw').value.trim(); if(kw) parts.push('關鍵字：'+kw);
+  const summary=parts.length?parts.join('　|　'):'全部紀錄';
+  const DIM=[['shape','茶乾形狀'],['dryColor','茶乾色澤'],['shakeAroma','搖香香氣'],['soupAroma','茶湯香氣'],['soupColor','茶湯湯色'],['taste','茶湯滋味'],['leaf','葉底']];
+  let body='';
+  filtered.forEach(r=>{
+    let rows='';
+    DIM.forEach(d=>{ if(r[d[0]]) rows+='<tr><th>'+d[1]+'</th><td>'+escapeHtml(r[d[0]])+'</td></tr>'; });
+    if(r.notes) rows+='<tr><th>結尾筆記</th><td>'+escapeHtml(r.notes)+'</td></tr>';
+    let cells='';
+    [['photoDry','茶乾'],['photoSoup','湯色'],['photoLeaf','葉底']].forEach(p=>{ cells+='<td class="pc">'+(r[p[0]]?('<div class="cap">'+p[1]+'</div><img src="'+r[p[0]]+'">'):'')+'</td>'; });
+    const hasPhoto=r.photoDry||r.photoSoup||r.photoLeaf;
+    body+='<div class="rec"><div class="rhead"><span class="rt">'+escapeHtml(r.sample||'未命名')+'</span>'
+      +'<span class="rm">'+escapeHtml(r.date)+'　'+escapeHtml(r.category)+(r.recorder?'　'+escapeHtml(r.recorder):'')+'</span></div>'
+      +'<table class="info">'+rows+'</table>'+(hasPhoto?'<table class="ptab"><tr>'+cells+'</tr></table>':'')+'</div>';
+  });
+  const html='<!doctype html><html><head><meta charset="utf-8"><title>茶葉審評紀錄</title><style>'
+    +'body{font-family:"PingFang TC","Microsoft JhengHei",sans-serif;color:#222;font-size:12px;padding:18px;}'
+    +'h1{font-size:20px;color:#2c4d31;margin:0 0 4px;} .sub{color:#777;font-size:11px;margin-bottom:14px;}'
+    +'.rec{border:1px solid #d9d4c7;border-radius:8px;padding:10px 12px;margin-bottom:12px;page-break-inside:avoid;}'
+    +'.rhead{border-bottom:2px solid #3f6b46;padding-bottom:5px;margin-bottom:7px;} .rt{font-size:15px;font-weight:bold;color:#2c4d31;} .rm{color:#777;font-size:11px;margin-left:8px;}'
+    +'table.info{width:100%;border-collapse:collapse;} table.info th{text-align:left;width:78px;color:#3f6b46;vertical-align:top;padding:3px 6px 3px 0;} table.info td{padding:3px 0;vertical-align:top;}'
+    +'table.ptab{width:100%;margin-top:8px;border-collapse:collapse;} .pc{width:33%;vertical-align:top;padding-right:6px;} .pc .cap{font-size:10px;color:#777;margin-bottom:2px;} .pc img{width:100%;border:1px solid #ddd;border-radius:5px;}'
+    +'.pbtn{position:fixed;top:10px;right:10px;padding:10px 16px;background:#3f6b46;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;}'
+    +'@media print{.pbtn{display:none;}}'
+    +'</style></head><body>'
+    +'<button class="pbtn" onclick="window.print()">列印 / 存成 PDF</button>'
+    +'<h1>茶葉感官審評紀錄</h1><div class="sub">匯出時間：'+todayStr()+'　|　'+escapeHtml(summary)+'　|　共 '+filtered.length+' 筆</div>'
+    +body+'<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},600);});<\/script>'
+    +'</body></html>';
+  const w=window.open('','_blank');
+  if(!w){ toast('請允許開啟新分頁以匯出 PDF'); return; }
+  w.document.write(html); w.document.close();
+}
+
+/* ===== 啟動 ===== */
+FIELDS.forEach(buildField);
+sb.auth.getSession().then(({data})=>applySession(data.session));
+</script>
+</body>
+</html>
