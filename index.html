@@ -106,7 +106,7 @@
 <header>
   <div class="htop">
     <h1>茶葉感官審評表</h1>
-    <div class="who"><span id="whoEmail"></span><button onclick="doLogout()">登出</button></div>
+    <div class="who"><button id="nickBtn" onclick="openNick(false)"><span id="whoNick"></span> ✎</button><button onclick="doLogout()">登出</button></div>
   </div>
   <div class="tabs">
     <div class="tab active" id="tab-form" onclick="switchTab('form')">新增紀錄</div>
@@ -213,6 +213,16 @@
   </div>
 </div>
 
+<div class="overlay" id="nickbox" onclick="if(event.target===this)closeNick()">
+  <div class="sheet">
+    <h3 id="nickTitle">設定暱稱</h3>
+    <div class="def">這個暱稱會自動帶入每筆紀錄的「紀錄人」，之後可隨時點右上角的暱稱修改。</div>
+    <input type="text" id="nickInput" placeholder="例：小明、茶痴老王" style="margin-bottom:14px;">
+    <button class="btn add" onclick="saveNick()">儲存暱稱</button>
+    <button class="close" id="nickClose" onclick="closeNick()">稍後再說</button>
+  </div>
+</div>
+
 <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLB()">
   <button class="x" onclick="closeLB()">×</button><img id="lbImg">
 </div>
@@ -274,10 +284,43 @@ function applySession(session){
   document.getElementById('authView').style.display = currentUser ? 'none' : '';
   document.getElementById('appView').style.display  = currentUser ? '' : 'none';
   if(currentUser){
-    document.getElementById('whoEmail').textContent = currentUser.email;
     if(!document.getElementById('date').value) document.getElementById('date').value = todayStr();
     allRecords = null;   // 換人或剛登入 → 重載
+    refreshNick();
+    if(!getNick()) openNick(true);   // 第一次登入：請先設定暱稱
   }
+}
+/* ===== 暱稱（存在帳號的 user_metadata，可隨時改）===== */
+let nickFirst = false;
+function getNick(){ return (currentUser && currentUser.user_metadata && currentUser.user_metadata.nickname) || ''; }
+function refreshNick(){
+  const n = getNick();
+  document.getElementById('whoNick').textContent = n || '設定暱稱';
+  if(n) document.getElementById('recorder').value = n;
+}
+function openNick(first){
+  nickFirst = !!first;
+  const inp = document.getElementById('nickInput');
+  inp.value = getNick();
+  document.getElementById('nickTitle').textContent = nickFirst ? '歡迎！請先設定暱稱' : '修改暱稱';
+  document.getElementById('nickClose').style.display = nickFirst ? 'none' : '';
+  document.getElementById('nickbox').classList.add('show');
+  setTimeout(()=>inp.focus(), 60);
+}
+function closeNick(){
+  if(nickFirst && !getNick()){ toast('請先輸入暱稱'); return; }
+  document.getElementById('nickbox').classList.remove('show');
+}
+async function saveNick(){
+  const v = document.getElementById('nickInput').value.trim();
+  if(!v){ toast('請輸入暱稱'); return; }
+  const {data,error} = await sb.auth.updateUser({data:{nickname:v}});
+  if(error){ toast('儲存失敗：'+error.message); return; }
+  if(data && data.user) currentUser = data.user;
+  nickFirst = false;
+  refreshNick();
+  document.getElementById('nickbox').classList.remove('show');
+  toast('暱稱已設定為「'+v+'」');
 }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
@@ -404,8 +447,9 @@ async function submitForm(){
   btn.disabled=false; btn.textContent='儲 存 紀 錄';
 }
 function resetForm(){
-  ['sample','recorder','notes','free-shape','free-dryColor','free-shakeAroma','free-soupAroma','free-soupColor','free-taste','free-leaf']
+  ['sample','notes','free-shape','free-dryColor','free-shakeAroma','free-soupAroma','free-soupColor','free-taste','free-leaf']
     .forEach(id=>{const el=document.getElementById(id); if(el)el.value='';});
+  document.getElementById('recorder').value = getNick();
   for(const k in selected) selected[k].clear();
   document.querySelectorAll('.chip.selected').forEach(c=>c.classList.remove('selected'));
   ['photoDry','photoSoup','photoLeaf'].forEach(removePhoto);
